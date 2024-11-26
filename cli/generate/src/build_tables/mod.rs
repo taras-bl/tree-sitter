@@ -25,7 +25,7 @@ use crate::{
     nfa::{CharacterSet, NfaCursor},
     node_types::VariableInfo,
     rules::{AliasMap, Symbol, SymbolType, TokenSet},
-    tables::{LexTable, ParseAction, ParseTable, ParseTableEntry},
+    tables::{LexTable, ParseAction, ParseStateId, ParseTable, ParseTableEntry, ProductionInfo},
 };
 
 pub struct Tables {
@@ -67,6 +67,12 @@ pub fn build_tables(
         lexical_grammar,
         &coincident_token_index,
         &token_conflict_map,
+        &keywords,
+    );
+    populate_non_reserved_keyword_actions(
+        &mut parse_table,
+        syntax_grammar,
+        lexical_grammar,
         &keywords,
     );
     populate_used_symbols(&mut parse_table, syntax_grammar, lexical_grammar);
@@ -224,6 +230,96 @@ fn populate_error_state(
     }
 
     state.terminal_entries.insert(Symbol::end(), recover_entry);
+}
+
+fn populate_non_reserved_keyword_actions(
+    parse_table: &mut ParseTable,
+    syntax_grammar: &SyntaxGrammar,
+    lexical_grammar: &LexicalGrammar,
+    keywords: &TokenSet,
+) {
+    let Some(word_token) = syntax_grammar.word_token else {
+        return;
+    };
+
+    let mut lookaheads_to_populate = HashMap::<ParseStateId, TokenSet>::new();
+
+    for state_id in 0..parse_table.states.len() {
+        let state = &parse_table.states[state_id];
+        let Some(word_token_successor_state_id) =
+            state.terminal_entries.get(&word_token).and_then(|entry| {
+                if let ParseAction::Shift { state, .. } = entry.actions.last()? {
+                    Some(*state)
+                } else {
+                    None
+                }
+            })
+        else {
+            continue;
+        };
+
+        for (token, entry) in &state.terminal_entries {
+            if !keywords.contains(token) || state.reserved_words.contains(token) {
+                continue;
+            }
+
+            let Some(keyword_successor_state_id) =
+                state.terminal_entries.get(token).and_then(|entry| {
+                    if let ParseAction::Shift { state, .. } = entry.actions.last()? {
+                        Some(*state)
+                    } else {
+                        None
+                    }
+                })
+            else {
+                continue;
+            };
+
+            let word_token_successor_state = &parse_table.states[word_token_successor_state_id];
+            let keyword_successor_state = &parse_table.states[keyword_successor_state_id];
+
+            for token in word_token_successor_state.terminal_entries.keys() {
+                if !keyword_successor_state.terminal_entries.contains_key(token) {
+                    lookaheads_to_populate
+                        .entry(keyword_successor_state_id)
+                        .or_default()
+                        .insert(*token);
+                }
+            }
+        }
+    }
+
+    if lookaheads_to_populate.is_empty() {
+        return;
+    }
+
+    let keyword_identifier_production_id = parse_table.production_infos.len();
+    let word_token_name = lexical_grammar.variables[word_token.index].name.clone();
+    parse_table.production_infos.push(ProductionInfo {
+        alias_sequence: vec![Some(crate::rules::Alias {
+            value: word_token_name,
+            is_named: true,
+        })],
+        field_map: Default::default(),
+    });
+
+    for (state_id, tokens) in lookaheads_to_populate {
+        let state = &mut parse_table.states[state_id];
+        for token in tokens.iter() {
+            state.terminal_entries.insert(
+                token,
+                ParseTableEntry {
+                    actions: vec![ParseAction::Reduce {
+                        symbol: (),
+                        child_count: 1,
+                        dynamic_precedence: 0,
+                        production_id: keyword_identifier_production_id,
+                    }],
+                    reusable: false,
+                },
+            );
+        }
+    }
 }
 
 fn populate_used_symbols(
