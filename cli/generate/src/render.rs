@@ -411,9 +411,11 @@ impl Generator {
         add_line!(self, "enum ts_symbol_identifiers {{");
         indent!(self);
         self.symbol_order.insert(Symbol::end(), 0);
-        let mut i = 1;
+        self.symbol_order
+            .insert(Symbol::non_reserved_identifier(), 1);
+        let mut i = 2;
         for symbol in &self.parse_table.symbols {
-            if *symbol != Symbol::end() {
+            if *symbol != Symbol::end() && !symbol.is_non_reserved_identifier() {
                 self.symbol_order.insert(*symbol, i);
                 add_line!(self, "{} = {i},", self.symbol_ids[symbol]);
                 i += 1;
@@ -1593,6 +1595,8 @@ impl Generator {
         let mut id;
         if symbol == Symbol::end() {
             id = "ts_builtin_sym_end".to_string();
+        } else if symbol.is_non_reserved_identifier() {
+            id = "ts_builtin_sym_non_reserved_identifier".to_string();
         } else {
             let (name, kind) = self.metadata_for_symbol(symbol);
             id = match kind {
@@ -1636,6 +1640,7 @@ impl Generator {
                 let token = &self.syntax_grammar.external_tokens[symbol.index];
                 (&token.name, token.kind)
             }
+            SymbolType::NonReservedIdentifier => ("non_reserved_identifier", VariableType::Hidden),
         }
     }
 

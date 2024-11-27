@@ -990,6 +990,7 @@ impl<'a> ParseTableBuilder<'a> {
                     format!("'{}'", &variable.name)
                 }
             }
+            SymbolType::NonReservedIdentifier => "non_reserved_identifier".to_string(),
         }
     }
 }

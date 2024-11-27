@@ -6,7 +6,7 @@ mod item_set_builder;
 mod minimize_parse_table;
 mod token_conflicts;
 
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use anyhow::Result;
 pub use build_lex_table::LARGE_CHARACTER_RANGE_COUNT;
@@ -258,7 +258,7 @@ fn populate_non_reserved_keyword_actions(
             continue;
         };
 
-        for (token, entry) in &state.terminal_entries {
+        for token in state.terminal_entries.keys() {
             if !keywords.contains(token) || state.reserved_words.contains(token) {
                 continue;
             }
@@ -293,6 +293,8 @@ fn populate_non_reserved_keyword_actions(
         return;
     }
 
+    parse_table.symbols.push(Symbol::non_reserved_identifier());
+
     let keyword_identifier_production_id = parse_table.production_infos.len();
     let word_token_name = lexical_grammar.variables[word_token.index].name.clone();
     parse_table.production_infos.push(ProductionInfo {
@@ -300,7 +302,7 @@ fn populate_non_reserved_keyword_actions(
             value: word_token_name,
             is_named: true,
         })],
-        field_map: Default::default(),
+        field_map: BTreeMap::default(),
     });
 
     for (state_id, tokens) in lookaheads_to_populate {
@@ -310,7 +312,7 @@ fn populate_non_reserved_keyword_actions(
                 token,
                 ParseTableEntry {
                     actions: vec![ParseAction::Reduce {
-                        symbol: (),
+                        symbol: Symbol::non_reserved_identifier(),
                         child_count: 1,
                         dynamic_precedence: 0,
                         production_id: keyword_identifier_production_id,

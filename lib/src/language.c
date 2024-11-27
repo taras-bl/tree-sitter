@@ -47,8 +47,13 @@ void ts_language_table_entry(
     result->is_reusable = false;
     result->actions = NULL;
   } else {
-    ts_assert(symbol < self->token_count);
-    uint32_t action_index = ts_language_lookup(self, state, symbol);
+    uint32_t action_index;
+    if (symbol == ts_builtin_sym_non_reserved_identifier) {
+      action_index = ts_language_lookup(self, state, self->keyword_capture_token);
+    } else {
+      ts_assert(symbol < self->token_count);
+      action_index = ts_language_lookup(self, state, symbol);
+    }
     const TSParseActionEntry *entry = &self->parse_actions[action_index];
     result->action_count = entry->entry.count;
     result->is_reusable = entry->entry.reusable;

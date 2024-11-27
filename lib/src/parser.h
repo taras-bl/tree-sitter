@@ -9,9 +9,10 @@ extern "C" {
 #include <stdint.h>
 #include <stdlib.h>
 
-#define ts_builtin_sym_error ((TSSymbol)-1)
-#define ts_builtin_sym_end 0
-#define TREE_SITTER_SERIALIZATION_BUFFER_SIZE 1024
+#define ts_builtin_sym_error                   ((TSSymbol)-1)
+#define ts_builtin_sym_end                     0
+#define ts_builtin_sym_non_reserved_identifier 1
+#define TREE_SITTER_SERIALIZATION_BUFFER_SIZE  1024
 
 #ifndef TREE_SITTER_API_H_
 typedef uint16_t TSStateId;

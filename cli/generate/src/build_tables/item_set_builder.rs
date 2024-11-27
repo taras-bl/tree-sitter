@@ -352,6 +352,7 @@ impl fmt::Debug for ParseItemSetBuilder<'_> {
                 SymbolType::External => &self.syntax_grammar.external_tokens[symbol.index].name,
                 SymbolType::Terminal => &self.lexical_grammar.variables[symbol.index].name,
                 SymbolType::End | SymbolType::EndOfNonTerminalExtra => "END",
+                SymbolType::NonReservedIdentifier => "NON_RESERVED_IDENTIFIER",
             };
             writeln!(
                 f,
@@ -368,6 +369,7 @@ impl fmt::Debug for ParseItemSetBuilder<'_> {
                 SymbolType::External => &self.syntax_grammar.external_tokens[symbol.index].name,
                 SymbolType::Terminal => &self.lexical_grammar.variables[symbol.index].name,
                 SymbolType::End | SymbolType::EndOfNonTerminalExtra => "END",
+                SymbolType::NonReservedIdentifier => "NON_RESERVED_IDENTIFIER",
             };
             writeln!(
                 f,
